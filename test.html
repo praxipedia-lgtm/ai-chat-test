@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Chat — Demo</title>
+  <meta name="description" content="AI Chat UI - desktop demo (dark gold theme). Save as index.html and deploy on Netlify." />
+  <style>
+    /* ---------------------------
+       THEME: Dark + Gold (user requested)
+       Single-file UI for quick deploy
+    ---------------------------- */
+    :root{
+      --bg-1:#050406;
+      --bg-2:#0c0710;
+      --panel:#0f0d12;
+      --muted:#bdb5a8;
+      --gold-1:#b8860b; /* goldenrod */
+      --gold-2:#ffcc33;
+      --accent:linear-gradient(90deg,#b8860b,#ffcc33);
+      --glass: rgba(255,255,255,0.02);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", system-ui, Arial, sans-serif;background:
+      linear-gradient(180deg,var(--bg-1),var(--bg-2));color:#eee;-webkit-font-smoothing:antialiased}
+    /* Layout */
+    .app{height:100vh;display:flex;align-items:stretch;gap:0}
+    /* LEFT SIDEBAR */
+    .left {
+      width:300px;
+      min-width:70px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-right:1px solid rgba(255,255,255,0.03);
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      transition:width .32s ease, padding .32s ease;
+    }
+    .left.collapsed{width:72px;padding:8px}
+    .left .top {display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .left h3{margin:0;color:var(--gold-2);letter-spacing:0.6px}
+    .left .toggle-btn{background:transparent;border:0;color:var(--muted);font-size:20px;cursor:pointer}
+    .chat-list{flex:1;overflow:auto;padding-right:6px}
+    .chat-item{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;margin-bottom:8px;cursor:pointer;transition:background .15s}
+    .chat-item:hover{background:rgba(255,255,255,0.02)}
+    .chat-item.active{background:linear-gradient(90deg, rgba(184,134,11,0.14), rgba(255,204,51,0.06));box-shadow:0 2px 10px rgba(0,0,0,0.5)}
+    .avatar{width:48px;height:48px;border-radius:50%;background-size:cover;background-position:center;border:2px solid rgba(255,255,255,0.03)}
+    .ci-text{display:flex;flex-direction:column}
+    .ci-text .name{font-weight:600;color:#fff}
+    .ci-text .sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .left .new {margin-top:12px}
+    .btn-new{width:100%;padding:10px 12px;border-radius:10px;border:0;background:var(--accent);color:#111;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(184,134,11,0.08)}
+    /* MAIN CENTER */
+    .center {
+      flex:1; min-width:480px; display:flex;flex-direction:column;align-items:stretch;
+      position:relative;
+    }
+    .header {
+      height:72px;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;
+      background:linear-gradient(90deg, rgba(0,0,0,0.12), rgba(0,0,0,0.08));
+      border-bottom:1px solid rgba(255,255,255,0.02)
+    }
+    .header .leftinfo{display:flex;align-items:center;gap:14px}
+    .header .title{font-size:18px;color:var(--gold-2);font-weight:700}
+    .header .sub{color:var(--muted);font-size:13px}
+    .header .controls{display:flex;align-items:center;gap:10px}
+    .lang{background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted);padding:6px 10px;border-radius:8px}
+    .header .icon {background:transparent;border:0;color:var(--muted);font-size:18px;cursor:pointer}
+    /* Chat area */
+    .chat-wrap{flex:1;padding:22px;overflow:auto;display:flex;flex-direction:column;gap:14px;align-items:center}
+    .chat-inner{width:920px;max-width:calc(100% - 40px);display:flex;flex-direction:column;gap:12px}
+    .bubble{max-width:72%;padding:14px 16px;border-radius:16px;font-size:15px;line-height:1.45;box-shadow:0 8px 30px rgba(0,0,0,0.5)}
+    .bubble.ai{align-self:flex-start;background:linear-gradient(180deg,#0f0e12, #151218);border:1px solid rgba(255,255,255,0.02);color:#ffd;position:relative}
+    .bubble.user{align-self:flex-end;background:linear-gradient(90deg,var(--gold-1),var(--gold-2));color:#100; font-weight:600}
+    .bubble .meta{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px;color:var(--muted)}
+    .bubble .meta .voice{color:var(--muted);font-weight:600}
+    .bubble .meta .time{color:rgba(255,255,255,0.35)}
+    /* input area */
+    .composer{height:92px;padding:18px;border-top:1px solid rgba(255,255,255,0.02);background:linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.03));display:flex;align-items:center;gap:12px}
+    .composer textarea{flex:1;min-height:56px;max-height:120px;border-radius:14px;padding:12px 14px;background:var(--panel);border:1px solid rgba(255,255,255,0.03);color:#eee;resize:none;outline:none;font-size:15px}
+    .composer .send{padding:12px 18px;border-radius:12px;border:0;background:var(--accent);color:#111;font-weight:800;cursor:pointer}
+    .composer .opts{display:flex;gap:8px;align-items:center}
+    .small-btn{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px;border-radius:10px;color:var(--muted);cursor:pointer}
+    /* RIGHT SIDEBAR */
+    .right {
+      width:360px;min-width:76px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-left:1px solid rgba(255,255,255,0.03);padding:18px;display:flex;flex-direction:column;transition:width .32s ease,padding .32s ease;
+    }
+    .right.collapsed{width:72px;padding:8px}
+    .profile {display:flex;gap:12px;align-items:center}
+    .profile .big{width:86px;height:86px;border-radius:12px;background-size:cover;background-position:center;border:2px solid rgba(255,255,255,0.03)}
+    .profile .info .name{font-weight:800;color:var(--gold-2);font-size:18px}
+    .profile .info .tag{color:var(--muted);font-size:13px;margin-top:6px}
+    .tabs{display:flex;gap:8px;margin-top:16px}
+    .tab{padding:8px 12px;border-radius:10px;color:var(--muted);cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
+    .tab.active{background:rgba(184,134,11,0.12);color:var(--gold-2);border-color:rgba(184,134,11,0.12)}
+    .section{margin-top:14px;color:var(--muted);font-size:14px}
+    .section h4{color:#fff;margin-bottom:8px}
+    .tags{display:flex;gap:8px;flex-wrap:wrap}
+    .tagItem{background:rgba(255,255,255,0.02);padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.02);font-size:13px;color:var(--muted)}
+    .personalitySelect, .relationshipSelect {width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:#fff}
+    /* tiny helpers */
+    .muted{color:var(--muted)}
+    .center-note{color:var(--muted);text-align:center;margin-top:8px}
+    /* scrollbar */
+    ::-webkit-scrollbar{height:10px;width:10px}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.03);border-radius:10px}
+    /* small responsive */
+    @media (max-width:1100px){
+      .chat-inner{width:720px}
+    }
+  </style>
+</head>
+<body>
+  <!--
+    index.html single-file deployment instructions:
+    - Save this file as index.html at the root and upload to Netlify (drag & drop).
+    - Backend: replace sendMessage() fetch URL /api/chat with your server endpoint when available.
+  -->
+  <div class="app">
+    <!-- LEFT -->
+    <aside id="left" class="left">
+      <div class="top">
+        <h3>Chats</h3>
+        <button class="toggle-btn" id="toggleLeft" title="Toggle">◀</button>
+      </div>
+
+      <div class="chat-list" id="chatList">
+        <!-- sample items -->
+        <div class="chat-item active" data-name="Elvira" data-avatar="https://i.imgur.com/7k6b1GQ.jpg">
+          <div class="avatar" style="background-image:url('https://i.imgur.com/7k6b1GQ.jpg')"></div>
+          <div class="ci-text">
+            <div class="name">Elvira</div>
+            <div class="sub">Romantic • 3m ago</div>
+          </div>
+        </div>
+
+        <div class="chat-item" data-name="Luna" data-avatar="https://i.pravatar.cc/80?img=56">
+          <div class="avatar" style="background-image:url('https://i.pravatar.cc/80?img=56')"></div>
+          <div class="ci-text">
+            <div class="name">Luna</div>
+            <div class="sub">Mischief • 1d ago</div>
+          </div>
+        </div>
+
+        <div class="chat-item" data-name="Nova" data-avatar="https://i.pravatar.cc/80?img=68">
+          <div class="avatar" style="background-image:url('https://i.pravatar.cc/80?img=68')"></div>
+          <div class="ci-text">
+            <div class="name">Nova</div>
+            <div class="sub">Playful • 2w ago</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="new">
+        <button class="btn-new" id="newChatBtn">+ New Chat</button>
+      </div>
+    </aside>
+
+    <!-- CENTER -->
+    <main class="center">
+      <div class="header">
+        <div class="leftinfo">
+          <div style="width:46px;height:46px;border-radius:12px;background-size:cover;background-position:center;border:2px solid rgba(255,255,255,0.03)" id="hdrAvatar"></div>
+          <div>
+            <div class="title" id="hdrName">Elvira</div>
+            <div class="sub" id="hdrSub">Romantic • Female</div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <select id="siteLang" class="lang" title="Change site language">
+            <option value="english">English</option>
+            <option value="hindi">Hindi (Roman)</option>
+            <option value="marathi">Marathi (Roman)</option>
+          </select>
+          <button class="icon" id="openSettings" title="Settings">⚙</button>
+        </div>
+      </div>
+
+      <div class="chat-wrap" id="chatWrap">
+        <div class="chat-inner" id="chatInner">
+          <!-- sample bubbles -->
+          <div class="bubble ai">
+            (smiles) Hey, I'm Elvira. How was your day?
+            <div class="meta"><span class="voice">▶ 6″</span><span class="time"> • 03:12 PM</span></div>
+          </div>
+
+          <div class="bubble user">
+            I missed you today ❤️
+            <div class="meta"><span class="time"> • 03:13 PM</span></div>
+          </div>
+
+          <div class="bubble ai">
+            (blushes) I missed you more... tell me what's on your mind.
+            <div class="meta"><span class="voice">▶ 3″</span><span class="time"> • 03:14 PM</span></div>
+          </div>
+        </div>
+
+        <div class="center-note">Tip: Use Enter to send — Shift+Enter for newline</div>
+      </div>
+
+      <div class="composer">
+        <div style="flex:1;display:flex;gap:10px;align-items:center">
+          <textarea id="composerBox" placeholder="Message Elvira..." rows="2"></textarea>
+          <div class="opts">
+            <button class="small-btn" id="emojiBtn">😊</button>
+            <button class="small-btn" id="attachBtn">📎</button>
+          </div>
+        </div>
+        <div>
+          <button class="send" id="sendBtn">SEND</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- RIGHT -->
+    <aside id="right" class="right">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;gap:12px;align-items:center">
+          <div class="big" id="prfImg" style="background-image:url('https://i.imgur.com/7k6b1GQ.jpg')"></div>
+          <div class="info">
+            <div class="name" id="prfName">Elvira</div>
+            <div class="tag" id="prfRole">Girlfriend • Romantic</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="small-btn" id="threeDots">⋮</button>
+          <button class="small-btn" id="toggleRight">▣</button>
+        </div>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <div class="tab active" data-tab="info">Info</div>
+        <div class="tab" data-tab="chat">Chat</div>
+        <div class="tab" data-tab="similar">Similar</div>
+        <div class="tab" data-tab="comments">Comments</div>
+      </div>
+
+      <div class="section" id="sectionInfo">
+        <h4>About</h4>
+        <div class="muted">Elvira is a romantic character who loves deep conversations and soft teasing.</div>
+
+        <h4 style="margin-top:12px">Tags</h4>
+        <div class="tags">
+          <div class="tagItem">Romantic</div>
+          <div class="tagItem">Flirty</div>
+          <div class="tagItem">Gentle</div>
+        </div>
+
+        <h4 style="margin-top:12px">Personality</h4>
+        <select class="personalitySelect" id="personalitySelect" multiple>
+          <option value="romantic">Romantic</option>
+          <option value="flirty">Flirty</option>
+          <option value="caring">Caring</option>
+          <option value="mysterious">Mysterious</option>
+        </select>
+
+        <h4 style="margin-top:12px">Relationship Role</h4>
+        <select class="relationshipSelect" id="relationshipSelect">
+          <option value="">Choose one</option>
+          <option value="girlfriend">Girlfriend</option>
+          <option value="crush">Crush</option>
+          <option value="friend">Best Friend</option>
+          <option value="fantasy">Fantasy</option>
+        </select>
+      </div>
+
+      <div class="section" id="sectionComments" style="display:none">
+        <h4>Comments</h4>
+        <div class="muted">- So realistic! 😍</div>
+        <div class="muted">- Love her replies</div>
+        <div class="muted">- Voice feature is great</div>
+      </div>
+
+      <div style="margin-top:auto;color:var(--muted);font-size:13px">© YourSite</div>
+    </aside>
+  </div>
+
+  <script>
+    /* ------------------------------
+       Basic JS for UI interactions
+       - Toggle left/right
+       - Click chat item to switch
+       - Composer send (dummy)
+       - Tabs for right panel
+       ------------------------------ */
+    const left = document.getElementById('left');
+    const right = document.getElementById('right');
+    const toggleLeft = document.getElementById('toggleLeft');
+    const toggleRight = document.getElementById('toggleRight');
+    const chatList = document.getElementById('chatList');
+    const hdrAvatar = document.getElementById('hdrAvatar');
+    const hdrName = document.getElementById('hdrName');
+    const hdrSub = document.getElementById('hdrSub');
+    const prfImg = document.getElementById('prfImg');
+    const prfName = document.getElementById('prfName');
+    const prfRole = document.getElementById('prfRole');
+    const chatInner = document.getElementById('chatInner');
+    const composerBox = document.getElementById('composerBox');
+    const sendBtn = document.getElementById('sendBtn');
+    const tabs = document.getElementById('tabs');
+    const sectionInfo = document.getElementById('sectionInfo');
+    const sectionComments = document.getElementById('sectionComments');
+
+    // Toggle handlers
+    toggleLeft.addEventListener('click', () => {
+      left.classList.toggle('collapsed');
+      // keep center width stable by just collapsing left
+    });
+    toggleRight.addEventListener('click', () => right.classList.toggle('collapsed'));
+
+    // Chat item click => switch active
+    chatList.addEventListener('click', (e) => {
+      const item = e.target.closest('.chat-item');
+      if(!item) return;
+      // clear active
+      chatList.querySelectorAll('.chat-item').forEach(ci => ci.classList.remove('active'));
+      item.classList.add('active');
+      // update header & profile
+      const name = item.dataset.name || 'Character';
+      const avatar = item.dataset.avatar;
+      hdrName.textContent = name;
+      prfName.textContent = name;
+      hdrAvatar.style.backgroundImage = `url('${avatar}')`;
+      prfImg.style.backgroundImage = `url('${avatar}')`;
+      hdrSub.textContent = item.querySelector('.sub').textContent || '';
+      // clear chat and show a default greeting for demo
+      chatInner.innerHTML = '';
+      appendAIMsg(`(smiles) Hello — I'm ${name}. Ready to chat?`);
+      appendUserMsg(`Hey ${name}!`);
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    // Basic tab switch
+    tabs.addEventListener('click', (e)=>{
+      const t = e.target.closest('.tab');
+      if(!t) return;
+      tabs.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      const key = t.dataset.tab;
+      if(key === 'comments'){ sectionInfo.style.display='none'; sectionComments.style.display='block'; }
+      else { sectionInfo.style.display='block'; sectionComments.style.display='none'; }
+    });
+
+    // Append messages helpers
+    function appendAIMsg(text){
+      const d = document.createElement('div');
+      d.className='bubble ai';
+      d.innerHTML = `${escapeHtml(text)}<div class="meta"><span class="voice">▶ 3″</span><span class="time"> • ${timeNow()}</span></div>`;
+      chatInner.appendChild(d);
+      scrollChat();
+    }
+    function appendUserMsg(text){
+      const d = document.createElement('div');
+      d.className='bubble user';
+      d.innerHTML = `${escapeHtml(text)}<div class="meta"><span class="time"> • ${timeNow()}</span></div>`;
+      chatInner.appendChild(d);
+      scrollChat();
+    }
+    // Send (dummy) - placeholder for API call
+    sendBtn.addEventListener('click', sendMessage);
+    composerBox.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
+    });
+
+    function sendMessage(){
+      const text = composerBox.value.trim();
+      if(!text) return;
+      appendUserMsg(text);
+      composerBox.value = '';
+      // placeholder: imitate async response
+      setTimeout(()=> { 
+        // Here replace with fetch('/api/chat', {method:'POST', body: JSON.stringify({...})}) to call your backend
+        // Example:
+        // fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})})
+        //  .then(r=>r.json()).then(data=>appendAIMsg(data.reply))
+
+        // Demo response logic: echo w/ personality
+        const demoResp = generateDemoReply(text);
+        appendAIMsg(demoResp);
+      }, 700 + Math.random()*800);
+    }
+
+    function generateDemoReply(userText){
+      // very small personality-style demo — replace by real LLM output
+      const lows = ['(smiles) That sounds lovely.', '(blushes) You always say the sweetest things.', '(giggles) You’re teasing me...'];
+      const pick = lows[Math.floor(Math.random()*lows.length)];
+      return `${pick} — ${userText.length>30 ? 'Tell me more about that.' : 'Go on…'}`;
+    }
+
+    function scrollChat(){ 
+      // keep chat centered visually by scrolling inner container to bottom
+      const wrap = document.getElementById('chatWrap');
+      wrap.scrollTop = wrap.scrollHeight;
+    }
+    function timeNow(){ const d=new Date(); return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+    function escapeHtml(unsafe){ return unsafe.replace(/[&<"']/g, (m)=>({'&':'&amp;','<':'&lt;','"':'&quot;',"'":"&#039;"}[m])); }
+
+    // Init: scroll to bottom
+    window.addEventListener('load', ()=>{ setTimeout(scrollChat,300); });
+
+    // New chat button behaviour (creates simple chat card)
+    document.getElementById('newChatBtn').addEventListener('click', ()=>{
+      const name = prompt('Name for new character (ex: Mira)') || `New${Math.floor(Math.random()*99)}`;
+      const img = `https://i.pravatar.cc/80?u=${Math.random()}`;
+      // create item DOM
+      const node = document.createElement('div'); node.className='chat-item';
+      node.dataset.name = name; node.dataset.avatar = img;
+      node.innerHTML = `<div class="avatar" style="background-image:url('${img}')"></div><div class="ci-text"><div class="name">${name}</div><div class="sub">New • just now</div></div>`;
+      chatList.prepend(node);
+    });
+
+    // simple emoji attach
+    document.getElementById('emojiBtn').addEventListener('click', ()=>{ composerBox.value += ' 😊'; composerBox.focus(); });
+    document.getElementById('attachBtn').addEventListener('click', ()=>{ alert('Attachment placeholder — integrate file upload to backend later'); });
+
+    // Prevent accidental selection
+    document.addEventListener('click',(e)=>{ /* placeholder for global clicks */ }, true);
+  </script>
+</body>
+</html>
